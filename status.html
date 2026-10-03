@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ro-MIDI Status</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%277%27%20fill%3D%27%230b0b11%27%2F%3E%3Crect%20x%3D%276.5%27%20y%3D%2719%27%20width%3D%273.6%27%20height%3D%277%27%20rx%3D%271.4%27%20fill%3D%27%233d7bc6%27%2F%3E%3Crect%20x%3D%2712.2%27%20y%3D%2713%27%20width%3D%273.6%27%20height%3D%2713%27%20rx%3D%271.4%27%20fill%3D%27%235b9de0%27%2F%3E%3Crect%20x%3D%2717.9%27%20y%3D%278%27%20width%3D%273.6%27%20height%3D%2718%27%20rx%3D%271.4%27%20fill%3D%27%238fbbf7%27%2F%3E%3Crect%20x%3D%2723.6%27%20y%3D%2715%27%20width%3D%273.6%27%20height%3D%2711%27%20rx%3D%271.4%27%20fill%3D%27%233fd0c9%27%2F%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b11; --panel:#15151f; --panel2:#1b1b28; --line:#282838; --line2:#33334a;
+    --text:#eef0f6; --sub:#9aa0b2; --dim:#6b7080;
+    --accent:#3d7bc6; --accentlt:#8fbbf7; --accent2:#3fd0c9; --good:#79d69b; --warn:#e6b24a; --bad:#e2647a; --gold:#e8c86a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.5;
+    min-height:100vh;padding:0 16px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding-bottom:60px}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+  .brand{display:flex;align-items:center;gap:9px;font-family:'Sora',sans-serif;font-weight:800;font-size:17px;letter-spacing:.5px}
+  .keys{display:inline-flex;align-items:flex-end;gap:2px;height:22px}
+  .keys i{width:4px;border-radius:1px;background:var(--accent);display:block}
+  .brand .r{color:var(--accentlt)}
+  .nav-link{color:var(--sub);text-decoration:none;font-size:13.5px;font-weight:500;border:1px solid var(--line);
+    padding:8px 14px;border-radius:9px;transition:.15s}
+  .nav-link:hover{color:var(--text);border-color:var(--accent)}
+  .navbtns{display:flex;align-items:center;gap:10px}
+  button.nav-link{background:none;font-family:inherit;font-size:13.5px;cursor:pointer}
+  button.nav-link:disabled{opacity:.6;cursor:default}
+  h1{font-family:'Sora',sans-serif;font-weight:800;font-size:clamp(26px,5vw,36px);margin:14px 0 6px;letter-spacing:-.4px}
+  .lead{color:var(--sub);font-size:15px;margin:0 0 24px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px}
+  .statusrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .bigdot{width:14px;height:14px;border-radius:50%;background:var(--dim);flex:none;transition:.2s}
+  .bigdot.up{background:var(--good);box-shadow:0 0 14px var(--good)}
+  .bigdot.down{background:var(--bad);box-shadow:0 0 14px var(--bad)}
+  .statustext{font-family:'Sora',sans-serif;font-weight:700;font-size:20px}
+  .uptime{color:var(--sub);font-size:14px;margin-left:auto}
+
+  h2{font-family:'Sora',sans-serif;font-weight:700;font-size:16px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;margin:0 0 14px}
+
+  /* now decoding */
+  .nowcard .job{padding:12px 0;border-bottom:1px solid var(--line)}
+  .nowcard .job:last-child{border-bottom:0;padding-bottom:0}
+  .nowcard .job:first-of-type{padding-top:0}
+  .jobtop{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:8px}
+  .jobname{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+  .jobmeta{color:var(--sub);font-size:12.5px;white-space:nowrap}
+  .track{height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .fill{height:100%;width:4%;border-radius:7px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    background-size:200% 100%;animation:sh 1.4s linear infinite;transition:width .4s ease}
+  @keyframes sh{to{background-position:200% 0}}
+  .idle{color:var(--sub);font-size:14px}
+
+  /* tiles */
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+  .tile{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:15px 12px;text-align:center}
+  .tile .n{font-family:'Sora',sans-serif;font-weight:800;font-size:23px}
+  .tile .l{font-size:10.5px;letter-spacing:.5px;color:var(--sub);text-transform:uppercase;margin-top:4px}
+  .tile.ok .n{color:var(--good)} .tile.warn .n{color:var(--warn)} .tile.bad .n{color:var(--bad)}
+  .tile.accent .n{color:var(--accentlt)} .tile.gold .n{color:var(--gold)}
+
+  /* biggest */
+  .big{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .big:last-child{border-bottom:0}
+  .rank{font-family:'Sora',sans-serif;font-weight:800;font-size:15px;color:var(--gold);width:26px;flex:none;text-align:center}
+  .bigname{flex:1;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bignotes{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--accentlt);white-space:nowrap}
+  .bigwhen{color:var(--dim);font-size:11.5px;margin-left:10px;white-space:nowrap}
+
+  /* timeline */
+  .timeline{display:flex;flex-direction:column}
+  .ev{display:flex;gap:13px;padding:12px 2px;border-bottom:1px solid var(--line)}
+  .ev:last-child{border-bottom:0}
+  .evdot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:none;background:var(--sub)}
+  .ev.start .evdot{background:var(--warn)} .ev.error .evdot{background:var(--bad)} .ev.decoded .evdot{background:var(--good)}
+  .evmain{flex:1;min-width:0}
+  .evtop{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .evtype{font-weight:600;font-size:14px}
+  .ev.start .evtype{color:var(--warn)} .ev.error .evtype{color:var(--bad)} .ev.decoded .evtype{color:var(--good)}
+  .evwhen{color:var(--dim);font-size:12px;white-space:nowrap}
+  .evmsg{color:var(--sub);font-size:12.5px;margin-top:2px;word-break:break-word}
+  .empty{text-align:center;color:var(--sub);padding:28px 10px}
+  .empty .eb{font-family:'Sora',sans-serif;font-weight:700;font-size:16px;color:var(--good)}
+  .foot{color:var(--dim);font-size:12px;text-align:center;margin-top:26px}
+  .muted{color:var(--dim)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">
+      <span class="keys"><i style="height:10px"></i><i style="height:16px"></i><i style="height:22px"></i><i style="height:14px"></i></span>
+      <span>RO-<span class="r">MIDI</span></span>
+    </div>
+    <div class="navbtns">
+      <button class="nav-link" id="refresh" type="button">Refresh</button>
+      <a class="nav-link" id="uplink" href="index.html">Uploader</a>
+    </div>
+  </nav>
+
+  <h1>Service history</h1>
+  <p class="lead">Live status, what's decoding right now, how much it has decoded, and recent activity.</p>
+
+  <div class="card">
+    <div class="statusrow">
+      <span class="bigdot" id="dot"></span>
+      <span class="statustext" id="statustext">Checking…</span>
+      <span class="uptime" id="uptime"></span>
+    </div>
+  </div>
+
+  <div class="card nowcard">
+    <h2>Now decoding</h2>
+    <p class="sub">Live jobs on the server right now.</p>
+    <div id="nowlist"></div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="card">
+    <h2>Biggest decodes</h2>
+    <p class="sub">The largest MIDIs this server has ever decoded, by note count.</p>
+    <div id="biggest"></div>
+  </div>
+
+  <div class="card">
+    <h2>Recent events</h2>
+    <p class="sub">Newest first. Green = decoded, red = error.</p>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div class="foot">Ro-MIDI &middot; press Refresh to update &middot; <span class="muted" id="generated"></span></div>
+</div>
+
+<script>
+// Standalone static page (GitHub Pages): talk to the API at its fixed address.
+var ORIGIN = 'https://th0894393--romidi.modal.run';
+var $ = function(id){ return document.getElementById(id); };
+try { $('uplink').href = 'index.html'; } catch(e){}
+
+function rel(sec){
+  var d = Math.max(0, Math.floor(Date.now()/1000) - sec);
+  if(d < 45) return 'just now';
+  if(d < 3600) return Math.round(d/60) + 'm ago';
+  if(d < 86400) return Math.round(d/3600) + 'h ago';
+  return Math.round(d/86400) + 'd ago';
+}
+function abs(sec){ try{ return new Date(sec*1000).toLocaleString(); }catch(e){ return ''; } }
+function commas(n){ try{ return Number(n).toLocaleString(); }catch(e){ return ''+n; } }
+function fmtUp(s){ s=Math.max(0,s|0); var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);
+  if(d) return d+'d '+h+'h'; if(h) return h+'h '+m+'m'; if(m) return m+'m'; return s+'s'; }
+function fmtDur(s){ s=Math.max(0,Math.round(s)); if(s<60) return s+'s'; var m=Math.floor(s/60); return m+'m '+(s%60)+'s'; }
+function fmtMs(ms){ if(!ms) return '–'; var s=ms/1000; return s<1?Math.round(ms)+'ms':fmtDur(s); }
+var LABEL = { start:'Server restarted', error:'Decode error', decoded:'Decoded' };
+var PHASE = { starting:'Starting', downloading:'Reading the file', queued:'Queued', parsing:'Parsing', assembling:'Building schedule' };
+
+function setOnline(up){
+  $('dot').className = 'bigdot ' + (up ? 'up' : 'down');
+  $('statustext').textContent = up ? 'Online' : 'Offline';
+}
+function tile(cls, n, l){ return '<div class="tile '+cls+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+
+function render(data){
+  var evs = data.events || [], now = data.now || Math.floor(Date.now()/1000);
+  var st = data.stats || {}, active = data.active || [], big = data.biggest || [];
+  // container-uptime resets every wake when the server scales to zero, so showing it would
+  // read as an alarming 'up for 4s' on a healthy service. Show the design mode instead.
+  $('uptime').textContent = 'Sleeps when idle · wakes on demand';
+
+  // now decoding
+  var nl = $('nowlist');
+  if(!active.length){
+    nl.innerHTML = '<div class="idle">Nothing is decoding right now.</div>';
+  } else {
+    nl.innerHTML = '';
+    active.forEach(function(a){
+      var frac = a.frac || 0, pct = Math.max(4, Math.round(frac*100));
+      var eta = (frac>0.02 && a.elapsedSec) ? ('~'+fmtDur(a.elapsedSec*(1-frac)/frac)+' left') : 'estimating…';
+      var meta = (PHASE[a.status]||a.status) + (a.noteCount?('  ·  '+commas(a.noteCount)+' notes'):'') + '  ·  ' + eta;
+      var row = document.createElement('div'); row.className='job';
+      row.innerHTML = '<div class="jobtop"><span class="jobname"></span><span class="jobmeta"></span></div>'
+        + '<div class="track"><div class="fill" style="width:'+pct+'%"></div></div>';
+      row.querySelector('.jobname').textContent = a.name;
+      row.querySelector('.jobmeta').textContent = meta;
+      nl.appendChild(row);
+    });
+  }
+
+  // stats tiles — honest for a scale-to-zero service (no fake 'uptime'/'restarts')
+  var bigTop = (big && big[0] && big[0].notes) ? commas(big[0].notes) : '–';
+  $('tiles').innerHTML =
+      tile('ok',     (st.successRate!=null? st.successRate+'%':'–'), 'Decode success')
+    + tile('accent', (st.decodes7d!=null? commas(st.decodes7d):'–'), 'Decoded (7d)')
+    + tile('accent', fmtMs(st.avgDecodeMs), 'Avg decode')
+    + tile('ok',     (st.decodesTotal!=null? commas(st.decodesTotal):'–'), 'Total decoded')
+    + tile('bad',    (st.errors7d!=null? st.errors7d:'–'), 'Errors (7d)')
+    + tile('gold',   bigTop, 'Biggest ever');
+
+  // biggest
+  var bb = $('biggest');
+  if(!big.length){ bb.innerHTML = '<div class="idle">No decodes recorded yet.</div>'; }
+  else {
+    bb.innerHTML = '';
+    big.forEach(function(b,i){
+      var row = document.createElement('div'); row.className='big';
+      row.innerHTML = '<span class="rank">#'+(i+1)+'</span><span class="bigname"></span>'
+        + '<span class="bignotes"></span><span class="bigwhen"></span>';
+      row.querySelector('.bigname').textContent = b.name || 'MIDI';
+      row.querySelector('.bignotes').textContent = commas(b.notes)+' notes';
+      row.querySelector('.bigwhen').textContent = b.ms?('in '+fmtMs(b.ms)):'';
+      bb.appendChild(row);
+    });
+  }
+
+  // timeline
+  var tl = $('timeline'); tl.innerHTML='';
+  if(!evs.length){ tl.innerHTML = '<div class="empty"><div class="eb">All smooth</div>No events recorded yet.</div>'; }
+  else {
+    evs.slice().reverse().forEach(function(e){
+      var cls = e.type==='error'?'error':e.type==='decoded'?'decoded':e.type==='start'?'start':'';
+      var msg = (e.type==='start') ? 'The server came back online.' : (e.msg||'');
+      var row = document.createElement('div'); row.className='ev '+cls;
+      row.innerHTML = '<span class="evdot"></span><div class="evmain">'
+        + '<div class="evtop"><span class="evtype"></span><span class="evwhen"></span></div><div class="evmsg"></div></div>';
+      row.querySelector('.evtype').textContent = LABEL[e.type]||e.type;
+      row.querySelector('.evwhen').textContent = rel(e.ts)+'  ·  '+abs(e.ts);
+      row.querySelector('.evmsg').textContent = msg;
+      tl.appendChild(row);
+    });
+  }
+  $('generated').textContent = 'updated ' + (new Date()).toLocaleTimeString();
+}
+
+// MANUAL REFRESH ONLY. Opening this page sends ZERO requests, so merely viewing it never wakes
+// the decode server (that round-the-clock polling was the cost leak). It contacts the API only
+// when you press Refresh.
+var firstDone = false, refreshing = false;
+function idle(){
+  $('dot').className = 'bigdot';
+  $('statustext').textContent = 'Tap Refresh for live status';
+  $('uptime').textContent = '';
+  $('nowlist').innerHTML = '<div class="idle">Press <b>Refresh</b> (top right) to load the latest status. '
+    + 'This page only contacts the server when you ask it to, so leaving it open costs nothing.</div>';
+}
+function refresh(){
+  if(refreshing) return;
+  refreshing = true;
+  var btn = $('refresh');
+  if(btn){ btn.disabled = true; btn.textContent = 'Refreshing\u2026'; }
+  if(!firstDone) $('statustext').textContent = 'Checking\u2026';
+  var pending = 2;
+  function settle(){ if(--pending <= 0){ refreshing = false; firstDone = true; if(btn){ btn.disabled = false; btn.textContent = 'Refresh'; } } }
+  fetch(ORIGIN+'/health').then(function(r){ return r.ok?r.json():Promise.reject(0); })
+    .then(function(j){ setOnline(!!(j&&j.ok)); }).catch(function(){ setOnline(false); }).then(settle, settle);
+  fetch(ORIGIN+'/history?json=1').then(function(r){ return r.json(); }).then(render).catch(function(){}).then(settle, settle);
+}
+(function(){ var b=$('refresh'); if(b) b.addEventListener('click', refresh); idle(); })();
+</script>
+</body>
+</html>
